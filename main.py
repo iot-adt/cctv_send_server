@@ -18,7 +18,7 @@ clients = []  # 클라이언트 소켓 리스트
 modes = {}  # 클라이언트별 모드 저장 (일반/보안)
 prev_frames = {}  # 클라이언트별 이전 프레임 저장
 
-BUZZER_SERVER_URL = "http://192.168.1.163:8080/trigger-buzzer"
+BUZZER_SERVER_URL = "http://10.144.158.254:5000/beep"
 
 def send_frames():
     global clients, modes, prev_frames
@@ -100,6 +100,9 @@ def detect_motion(frame, ws):
 
         # 이전 프레임 갱신
         prev_frames[ws] = gray_frame
+
+        if motion_detected:
+            send_buzzer_signal()
 
         return frame
     except Exception as e:
