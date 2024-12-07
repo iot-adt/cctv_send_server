@@ -102,7 +102,7 @@ def detect_motion(frame, ws):
         prev_frames[ws] = gray_frame
 
         if motion_detected:
-            send_buzzer_signal()
+            threading.Thread(target=send_buzzer_signal).start()
 
         return frame
     except Exception as e:
@@ -113,13 +113,12 @@ def send_buzzer_signal():
     #http request
     try:
         response = requests.post(BUZZER_SERVER_URL, json = {"motion": True})
-        if response.status_code==200:
-            print("sign succes")
+        if response.status_code == 200:
+            print("sign success")
         else:
             print("sign fail")
-    except Exception as e :
+    except Exception as e:
         print(f"error : {e}")
-
 
 @sock.route('/video')
 def video(ws):
