@@ -30,7 +30,9 @@ def send_frames():
             if not ret:
                 continue
 
-            for ws in clients:
+            # 리스트를 복사하여 순회 중 수정 문제 방지
+            current_clients = clients.copy()
+            for ws in current_clients:
                 try:
                     # 클라이언트의 모드 확인
                     mode = modes.get(ws, "normal")  # 기본값: 일반(normal)
@@ -48,8 +50,9 @@ def send_frames():
 
                     # 모든 클라이언트에 전송
                     ws.send(encoded_frame)
-                except:
-                    clients.remove(ws)
+                except Exception as e:
+                    if ws in clients:
+                        clients.remove(ws)
                     if ws in modes:
                         del modes[ws]
 
