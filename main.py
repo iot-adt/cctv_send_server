@@ -39,7 +39,6 @@ def send_frames():
                     current_frame = frame.copy()
 
                     if mode == "secure":
-                        print(f"Processing secure mode for client")
                         # 보안 모드: 움직임 감지
                         current_frame = detect_motion(current_frame, ws)
                     
@@ -51,7 +50,6 @@ def send_frames():
                     encoded_frame = base64.b64encode(buffer).decode('utf-8')
 
                     # 클라이언트에 전송
-                    print(f"Sending frame in {mode} mode")
                     ws.send(encoded_frame)
                 except Exception as e:
                     print(f"Error in send_frames: {str(e)}")
