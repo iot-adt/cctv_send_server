@@ -16,14 +16,12 @@ camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 clients = []  # 클라이언트 소켓 리스트
 modes = {}  # 클라이언트별 모드 저장 (일반/보안)
-
-# 움직임 감지용 이전 프레임 초기화
-prev_frame = None
+prev_frames = {}  # 클라이언트별 이전 프레임 저장
 
 BUZZER_SERVER_URL = "http://192.168.1.163:8080/trigger-buzzer"
 
 def send_frames():
-    global clients, modes, prev_frame
+    global clients, modes, prev_frames
     while True:
         if len(clients) > 0:
             ret, frame = camera.read()
@@ -39,7 +37,7 @@ def send_frames():
 
                     if mode == "secure":
                         # 보안 모드: 움직임 감지
-                        frame = detect_motion(frame)
+                        frame = detect_motion(frame, ws)
                     
                     # 흑백 변환 (일반/보안 모드 공통)
                     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -55,24 +53,27 @@ def send_frames():
                         clients.remove(ws)
                     if ws in modes:
                         del modes[ws]
+                    if ws in prev_frames:  # prev_frames에서도 제거
+                        del prev_frames[ws]
 
         time.sleep(0.03)
 
 
-def detect_motion(frame):
+def detect_motion(frame, ws):
     """2프레임 기반 움직임 감지 및 사각형 표시"""
-    global prev_frame
+    global prev_frames
+    
     # 현재 프레임을 흑백 및 블러 처리
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray_frame = cv2.GaussianBlur(gray_frame, (21, 21), 0)
 
-    if prev_frame is None:
+    if ws not in prev_frames:
         # 이전 프레임 초기화
-        prev_frame = gray_frame
+        prev_frames[ws] = gray_frame
         return frame
 
     # 두 프레임 간 차이 계산
-    diff_frame = cv2.absdiff(prev_frame, gray_frame)
+    diff_frame = cv2.absdiff(prev_frames[ws], gray_frame)
 
     # 차이를 이진화 (임계값 적용)
     _, thresh_frame = cv2.threshold(diff_frame, 25, 255, cv2.THRESH_BINARY)
@@ -94,10 +95,10 @@ def detect_motion(frame):
         cv2.putText(frame, 'Motion Detected', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
     # 이전 프레임 갱신
-    prev_frame = gray_frame
+    prev_frames[ws] = gray_frame
 
-    if motion_detected:
-        send_buzzer_signal()
+    # if motion_detected:
+    #     send_buzzer_signal()
 
     return frame
 
@@ -115,7 +116,7 @@ def send_buzzer_signal():
 
 @sock.route('/video')
 def video(ws):
-    global clients, modes
+    global clients, modes, prev_frames
     clients.append(ws)
     modes[ws] = "normal"  # 기본 모드: 일반
     while True:
@@ -134,6 +135,8 @@ def video(ws):
     clients.remove(ws)
     if ws in modes:
         del modes[ws]
+    if ws in prev_frames:  # prev_frames에서도 제거
+        del prev_frames[ws]
 
 
 @app.route("/")
@@ -147,4 +150,3 @@ if __name__ == "__main__":
     thread.start()
 
     app.run(host="0.0.0.0", port=5000)
-
